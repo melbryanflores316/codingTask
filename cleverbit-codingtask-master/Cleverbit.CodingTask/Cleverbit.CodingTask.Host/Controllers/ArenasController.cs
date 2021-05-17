@@ -76,17 +76,36 @@ namespace Cleverbit.CodingTask.Host.Controllers
             return Ok();
         }
         
-        [HttpGet("match/all")]
+        [HttpGet("match")]
         public ActionResult GetMatches()
         {
-            var matches = this._context.ScoreBoards.Include(s => s.Match)
-                                                                .OrderBy(s => s.Match.Expiry).ToList();
+            var matches = this._context.Matches.OrderBy(s => s.Expiry).ToList();
             return Ok(matches);
         }
         [HttpGet("match/{id}")]
+        public ActionResult GetMatch(int id)
+        {
+            var scores = this._context.Matches.Where(s => s.Id == id).OrderBy(s => s.Expiry).ToList();
+            return Ok(scores);
+        }
+        [HttpGet("scores")]
+        public ActionResult GetScores()
+        {
+            var matches = this._context.ScoreBoards.Include(s => s.Match).OrderBy(s => s.Match.Expiry).ToList();
+            return Ok(matches);
+        }
+        [HttpGet("scores/{id}")]
         public ActionResult GetScoresInMatch(int id)
         {
-            var scores = this._context.ScoreBoards.Where(s => s.MatchId == id).OrderByDescending(s => s.Score).ToList();
+            var scores = this._context.ScoreBoards.Where(s => s.MatchId == id).Include(s => s.Match).Include(s =>s.User).Select(s => new ScoreBoard()
+            {
+                Match = s.Match,
+                MatchId = s.MatchId,
+                UserId = s.UserId,
+                User = new User { Id = s.UserId, UserName = s.User.UserName},
+                Id = s.Id,
+                Score = s.Score
+            }).OrderByDescending(s => s.Score).ToList();
             return Ok(scores);
         }
     }
