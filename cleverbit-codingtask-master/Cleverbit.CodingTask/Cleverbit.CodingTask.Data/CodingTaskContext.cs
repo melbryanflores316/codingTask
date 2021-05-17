@@ -11,7 +11,7 @@ namespace Cleverbit.CodingTask.Data
         }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Match> Type { get; set; }
+        public DbSet<Match> Matches { get; set; }
         public DbSet<ScoreBoard> ScoreBoards { get; set; }
 
 
