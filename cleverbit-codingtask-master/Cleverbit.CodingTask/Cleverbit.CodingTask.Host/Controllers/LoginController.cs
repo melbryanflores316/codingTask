@@ -13,11 +13,9 @@ namespace Cleverbit.CodingTask.Host.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
-        private readonly CodingTaskContext _context;
 
         public LoginController(CodingTaskContext context)
         {
-            _context = context;
         }
 
         [HttpPost]

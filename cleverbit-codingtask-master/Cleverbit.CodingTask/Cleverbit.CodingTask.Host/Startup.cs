@@ -32,6 +32,16 @@ namespace Cleverbit.CodingTask.Host
 
             services.AddSingleton<IHashService>(new HashService(configuration.GetSection("HashSalt").Get<string>()));
 
+            services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(
+                    builder =>
+                    {
+                        builder.WithOrigins("http://localhost:4200");
+                        builder.AllowAnyHeader();
+                        builder.AllowAnyMethod();
+                    });
+            });
             services.AddControllers();
 
             services.AddAuthentication("BasicAuthentication")
@@ -54,6 +64,7 @@ namespace Cleverbit.CodingTask.Host
             });
 
             app.UseRouting();
+            app.UseCors();
 
             app.UseAuthentication();
             app.UseAuthorization();

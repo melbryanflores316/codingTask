@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace Cleverbit.CodingTask.Host.Controllers
         public ActionResult SubmitEntry(ScoreBoard scoreBoard)
         {
             var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-            var user= this._context.Users.FirstOrDefault(s => s.UserName == userName);
+            var user = this._context.Users.FirstOrDefault(s => s.UserName == userName);
             if (user == null)
             {
                 return BadRequest("User not found");
@@ -97,16 +97,43 @@ namespace Cleverbit.CodingTask.Host.Controllers
         [HttpGet("scores/{id}")]
         public ActionResult GetScoresInMatch(int id)
         {
-            var scores = this._context.ScoreBoards.Where(s => s.MatchId == id).Include(s => s.Match).Include(s =>s.User).Select(s => new ScoreBoard()
+            var scores = this._context.ScoreBoards.Where(s => s.MatchId == id).Include(s => s.Match).Include(s => s.User).Select(s => new ScoreBoard()
             {
                 Match = s.Match,
                 MatchId = s.MatchId,
                 UserId = s.UserId,
-                User = new User { Id = s.UserId, UserName = s.User.UserName},
+                User = new User { Id = s.UserId, UserName = s.User.UserName },
                 Id = s.Id,
                 Score = s.Score
             }).OrderByDescending(s => s.Score).ToList();
             return Ok(scores);
+        }
+
+        [HttpGet("config/{matchId}")]
+        [Authorize]
+        public ActionResult GetConfig(int matchId)
+        {
+            var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+            var user = this._context.Users.FirstOrDefault(s => s.UserName == userName);
+            var result = new
+            {
+                canPlay = false
+            };
+            if (user == null)
+            {
+                return Ok(result);
+            }
+
+            var match = _context.ScoreBoards.Include(s => s.Match).FirstOrDefault(m => m.Match.Id == matchId && user.Id == m.UserId);
+            if (match == null)
+            {
+                return Ok(result);
+            }
+
+            
+            var matchActive = match.Match.Expiry.Ticks > DateTime.Now.Ticks;
+            result = new {canPlay = matchActive};
+            return Ok(result);
         }
     }
 }
