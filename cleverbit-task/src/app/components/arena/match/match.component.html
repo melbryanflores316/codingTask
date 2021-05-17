@@ -1,0 +1,5 @@
+
+<ng-container *ngIf="(match$|async) as match">
+  <button [disabled]="!match.canPlay" (click)="playNow()">Play Now</button>
+  <label>RESULT: {{result?.score}}</label>
+</ng-container>

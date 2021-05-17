@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace Cleverbit.CodingTask.Host.Controllers
             _context = context;
         }
         [HttpPost("entry")]
-        [Authorize]
+        // [Authorize]
         public ActionResult SubmitEntry(ScoreBoard scoreBoard)
         {
             var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
@@ -33,11 +33,12 @@ namespace Cleverbit.CodingTask.Host.Controllers
                 return BadRequest("User not found");
             }
 
+            scoreBoard.UserId = this._context.Users.FirstOrDefault(s => s.UserName == user.UserName).Id;
             var match = _context.Matches.FirstOrDefault(m => m.Id == scoreBoard.MatchId);
             // check if matchID is valid
             if (match != null)
             {
-                var userWithMatch = this._context.ScoreBoards.FirstOrDefault(s => s.UserId == scoreBoard.UserId);
+                var userWithMatch = this._context.ScoreBoards.FirstOrDefault(s => scoreBoard.MatchId == s.MatchId && s.UserId == scoreBoard.UserId);
                 // check if user has already entered this match
                 if (userWithMatch != null)
                 {
@@ -57,7 +58,7 @@ namespace Cleverbit.CodingTask.Host.Controllers
                 return BadRequest("Match expired");
             }
 
-            
+
             return BadRequest("Match not found, or not valid");
         }
 
@@ -75,7 +76,7 @@ namespace Cleverbit.CodingTask.Host.Controllers
             this._context.SaveChanges();
             return Ok();
         }
-        
+
         [HttpGet("match")]
         public ActionResult GetMatches()
         {
@@ -83,57 +84,98 @@ namespace Cleverbit.CodingTask.Host.Controllers
             return Ok(matches);
         }
         [HttpGet("match/{id}")]
+        [Authorize]
         public ActionResult GetMatch(int id)
         {
-            var scores = this._context.Matches.Where(s => s.Id == id).OrderBy(s => s.Expiry).ToList();
+            var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+            var user = this._context.Users.FirstOrDefault(s => s.UserName == userName);
+            var scores = this._context.Matches.Select(s => new
+            {
+                s.Id,
+                s.Name,
+                s.Expiry,
+                canPlay = GetConfig(id, user)
+            }).FirstOrDefault(s => s.Id == id);
             return Ok(scores);
         }
         [HttpGet("scores")]
         public ActionResult GetScores()
         {
-            var matches = this._context.ScoreBoards.Include(s => s.Match).OrderBy(s => s.Match.Expiry).ToList();
+            var matches = this._context.ScoreBoards
+                .Include(s => s.Match)
+                .Include(s => s.User)
+                .OrderBy(s => s.Match.Expiry)
+                .Select(s => new
+                {
+                    matchName = s.Match.Name,
+                    username = s.User.UserName,
+                    s.Score,
+                    s.Id
+                })
+                .ToList();
             return Ok(matches);
         }
+
+        [HttpGet("scoreboard/{matchId}")]
+        public ActionResult GetScoreBoard(int matchId)
+        {
+            var result = this._context.ScoreBoards
+                .Include(s => s.Match)
+                .Include(s => s.User)
+                .Where(s => s.MatchId == matchId)
+                .Select(s => new
+                {
+                    
+                    s.Score,
+                    s.Id,
+                    UserName = s.User.UserName,
+                    MatchName = s.Match.Name
+
+                }).ToList();
+            return Ok(result);
+        }
+
         [HttpGet("scores/{id}")]
+        [Authorize]
         public ActionResult GetScoresInMatch(int id)
         {
-            var scores = this._context.ScoreBoards.Where(s => s.MatchId == id).Include(s => s.Match).Include(s => s.User).Select(s => new ScoreBoard()
+             var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+            var user = this._context.Users.FirstOrDefault(s => s.UserName == userName);
+            var scores = this._context.ScoreBoards
+                .Where(s => s.MatchId == id && s.UserId == user.Id)
+                .Include(s => s.Match).Include(s => s.User).Select(s => new 
             {
                 Match = s.Match,
                 MatchId = s.MatchId,
                 UserId = s.UserId,
                 User = new User { Id = s.UserId, UserName = s.User.UserName },
                 Id = s.Id,
-                Score = s.Score
-            }).OrderByDescending(s => s.Score).ToList();
+                Score = s.Score,
+                canPlay = GetConfig(id, user)
+            }).OrderByDescending(s => s.Score).FirstOrDefault();
             return Ok(scores);
         }
 
-        [HttpGet("config/{matchId}")]
-        [Authorize]
-        public ActionResult GetConfig(int matchId)
+        public Boolean GetConfig(int matchId, User user)
         {
-            var userName = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-            var user = this._context.Users.FirstOrDefault(s => s.UserName == userName);
-            var result = new
-            {
-                canPlay = false
-            };
-            if (user == null)
-            {
-                return Ok(result);
-            }
-
-            var match = _context.ScoreBoards.Include(s => s.Match).FirstOrDefault(m => m.Match.Id == matchId && user.Id == m.UserId);
-            if (match == null)
-            {
-                return Ok(result);
-            }
+            var canPlay = false;
 
             
-            var matchActive = match.Match.Expiry.Ticks > DateTime.Now.Ticks;
-            result = new {canPlay = matchActive};
-            return Ok(result);
+            var scoreBoard = _context.ScoreBoards.Include(s => s.Match).FirstOrDefault(m => m.Match.Id == matchId && user.Id == m.UserId);
+            var match = _context.Matches.FirstOrDefault(s => s.Id == matchId);
+            if (match == null)
+            {
+                return false;
+            }
+            if (scoreBoard == null)
+            {
+                var matchActive = match.Expiry.Ticks > DateTime.Now.Ticks;
+                return matchActive;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }
