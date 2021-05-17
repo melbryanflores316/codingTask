@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Cleverbit.CodingTask.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Cleverbit.CodingTask.Host.Controllers
 {
@@ -11,9 +13,21 @@ namespace Cleverbit.CodingTask.Host.Controllers
     [ApiController]
     public class LoginController : ControllerBase
     {
-        public LoginController()
+        private readonly CodingTaskContext _context;
+
+        public LoginController(CodingTaskContext context)
         {
-            
+            _context = context;
+        }
+
+        [HttpPost]
+        [Authorize]
+        public IActionResult Login()
+        {
+            return Ok(new
+            {
+                isLoggedIn = true
+            });
         }
     }
 }

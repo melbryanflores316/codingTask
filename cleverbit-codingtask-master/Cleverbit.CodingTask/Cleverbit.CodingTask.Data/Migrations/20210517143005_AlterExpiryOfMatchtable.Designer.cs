@@ -4,14 +4,16 @@ using Cleverbit.CodingTask.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Cleverbit.CodingTask.Data.Migrations
 {
     [DbContext(typeof(CodingTaskContext))]
-    partial class CodingTaskContextModelSnapshot : ModelSnapshot
+    [Migration("20210517143005_AlterExpiryOfMatchtable")]
+    partial class AlterExpiryOfMatchtable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
